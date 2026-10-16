@@ -6,7 +6,10 @@ import {
   User, 
   LogOut, 
   RefreshCw,
-  Activity
+  Activity,
+  Radio,
+  ShieldCheck,
+  X
 } from 'lucide-react';
 import { useProjectContext } from '../context/ProjectContext';
 
@@ -22,24 +25,28 @@ export const Header: React.FC = () => {
   } = useProjectContext();
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-6 py-3 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-6 py-3 flex items-center justify-between gap-4 select-none">
       
       {/* Left Title & Status */}
-      <div className="flex items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base lg:text-lg font-extrabold tracking-tight text-white uppercase flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0"></span>
-              CONTROLLING PROJECT BELACOM
-            </h1>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-950/50 border border-cyan-400/30 group cursor-pointer hover:scale-105 active:scale-95 transition-all">
+            <Radio className="w-5 h-5 text-white group-hover:rotate-12 transition-transform duration-300" />
           </div>
-          <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-            Sistem Informasi Operasional & Manajemen WO Telecom
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white uppercase flex items-center gap-2">
+                CONTROLLING PROJECT BELACOM
+              </h1>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              Sistem Informasi Operasional & Manajemen WO Telecom Jabo
+            </p>
+          </div>
         </div>
 
         {/* Real-time Auto-save Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-800/80 border border-slate-700/60 rounded-full text-xs font-mono">
+        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-800/80 border border-slate-700/60 rounded-full text-xs font-mono shadow-sm">
           {autoSaveStatus === 'saving' ? (
             <>
               <RotateCw className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
@@ -57,21 +64,21 @@ export const Header: React.FC = () => {
 
       {/* Middle Global Search */}
       <div className="flex-1 max-w-xs lg:max-w-md hidden md:block">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="relative group/search">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within/search:text-cyan-400 transition-colors" />
           <input
             type="text"
             placeholder="Cari WO, PIC, area, tim, atau nomor surat..."
             value={filters.searchQuery}
             onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-            className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 text-xs text-slate-100 placeholder-slate-500 rounded-xl pl-9 pr-3 py-2 outline-none transition-all focus:ring-1 focus:ring-cyan-500"
+            className="w-full bg-slate-950/80 border border-slate-800 focus:border-cyan-500 text-xs text-slate-100 placeholder-slate-500 rounded-xl pl-9 pr-8 py-2 outline-none transition-all duration-200 focus:ring-1 focus:ring-cyan-500/50 shadow-inner"
           />
           {filters.searchQuery && (
             <button
               onClick={() => setFilters(prev => ({ ...prev, searchQuery: '' }))}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              ×
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -86,16 +93,16 @@ export const Header: React.FC = () => {
               resetAllData();
             }
           }}
-          className="p-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs border border-slate-700/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="p-2 sm:px-3 sm:py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs border border-slate-700/60 transition-all duration-150 flex items-center gap-1.5 cursor-pointer group active:scale-95 shadow-sm"
           title="Reset Sampel Data"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <RefreshCw className="w-3.5 h-3.5 text-cyan-400 shrink-0 group-hover:rotate-180 transition-transform duration-500 ease-out" />
           <span className="hidden xl:inline text-xs font-medium">Reset Data</span>
         </button>
 
         {/* User Info & Logout */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-md">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-md border border-cyan-400/20">
             <User className="w-4 h-4" />
           </div>
           <div className="hidden lg:block text-left">
@@ -103,16 +110,16 @@ export const Header: React.FC = () => {
               {currentUserEmail || 'Operator Belacom'}
             </p>
             <p className="text-[10px] text-cyan-400 font-mono flex items-center gap-1">
-              <Activity className="w-2.5 h-2.5 inline" /> Operational Controller
+              <Activity className="w-2.5 h-2.5 inline animate-pulse" /> Operational Controller
             </p>
           </div>
 
           <button
             onClick={logout}
-            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer ml-1"
+            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-150 cursor-pointer ml-1 active:scale-95"
             title="Keluar / Logout"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>

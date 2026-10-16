@@ -19,7 +19,21 @@ import { ToastMessage, ToastContainer } from '../components/Toast';
 
 export interface DrilldownFilter {
   title: string;
-  category: 'wo' | 'project' | 'statusWo' | 'statusProject' | 'bast' | 'rfs' | 'invoice';
+  category: 
+    | 'wo' 
+    | 'project' 
+    | 'statusWo' 
+    | 'statusProject' 
+    | 'bast' 
+    | 'rfs' 
+    | 'invoice' 
+    | 'penagihan' 
+    | 'area' 
+    | 'cancel' 
+    | 'timeline' 
+    | 'finishDate' 
+    | 'monthRelease' 
+    | 'woType';
   value: string;
 }
 
