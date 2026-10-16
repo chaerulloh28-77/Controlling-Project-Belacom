@@ -7,14 +7,10 @@ import {
   Check, 
   Eye, 
   Download, 
-  Trash2, 
   FileText, 
-  AlertCircle,
   Building,
-  ArrowRight,
-  Sparkles,
-  Inbox,
-  RotateCw
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { TouchButton } from './TouchButton';
 import { 
@@ -23,7 +19,7 @@ import {
   generateSubmissionEmailHtml, 
   formatFileSize 
 } from '../utils/emailTemplate';
-import { downloadAttachedFile, prepareAttachmentsForResend } from '../utils/fileDownloader';
+import { downloadAttachedFile } from '../utils/fileDownloader';
 import { isValidEmail, validateEmailList } from '../utils/validation';
 import { useProjectContext } from '../context/ProjectContext';
 
@@ -31,6 +27,7 @@ interface SendEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultData: {
+    bastId?: string;
     requestType: 'BAST' | 'Invoice' | 'RFS' | 'Penagihan' | 'Both';
     woNumber: string;
     projectName: string;
@@ -46,14 +43,10 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   onClose,
   defaultData
 }) => {
-  const { showToast } = useProjectContext();
+  const { showToast, bastList, updateBAST } = useProjectContext();
 
   // Mode: 'form' (Form Pengiriman) or 'preview' (Tampilan Penerima / Gmail Preview)
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form');
-
-  // Sending status
-  const [isSending, setIsSending] = useState(false);
-  const [sendingStatusText, setSendingStatusText] = useState('');
 
   // Form states
   const [recipientEmail, setRecipientEmail] = useState(defaultData.defaultRecipient || 'sap.procurement@telkom.co.id');
@@ -88,8 +81,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       setRecipientName(defaultData.defaultRecipientName || 'Bpk. Aris Munandar / Tim SAP Asset');
       setSubject(`[PENGAJUAN SAP] ${defaultData.requestType} - ${defaultData.woNumber} - ${defaultData.projectName}`);
       setSelectedAttachments(defaultData.availableAttachments);
-      setIsSending(false);
-      setSendingStatusText('');
     }
   }, [isOpen, defaultData]);
 
@@ -115,9 +106,9 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       setCcInput('');
       return;
     }
-    // Validasi ketat format email menggunakan regex standar RFC 5322
+    // Validasi format email menggunakan regex standar RFC 5322
     if (!isValidEmail(trimmed)) {
-      showToast('error', 'Format Email Tidak Valid', `Email '${trimmed}' tidak memenuhi format standar RFC 5322 (contoh: user@domain.com).`);
+      showToast('error', 'Format Email Tidak Valid', `Email '${trimmed}' tidak memenuhi format standar (contoh: user@domain.com).`);
       return;
     }
     setCcList(prev => [...prev, trimmed]);
@@ -132,13 +123,11 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   };
 
   const handleRemoveCc = (emailToRemove: string) => {
-    if (isSending) return;
     setCcList(prev => prev.filter(e => e !== emailToRemove));
   };
 
   // Toggle attachment checkbox
   const handleToggleAttachment = (attachment: EmailAttachment) => {
-    if (isSending) return;
     setSelectedAttachments(prev => {
       const exists = prev.some(a => a.name === attachment.name);
       if (exists) {
@@ -169,94 +158,68 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
 
   const generatedHtml = generateSubmissionEmailHtml(emailData);
 
-  // Send Email Handler Nyata ke endpoint /api/send-email
-  const handleSendEmail = async () => {
-    if (isSending) return;
-
-    // 1. Validasi penerima utama (To) dengan standar RFC 5322
-    const cleanTo = recipientEmail.trim();
-    if (!cleanTo || !isValidEmail(cleanTo)) {
-      showToast('error', 'Email Penerima Wajib Valid', 'Harap isi alamat email penerima utama yang valid sesuai standar RFC 5322.');
+  // Submit Handler: Langsung membuka Gmail Web di tab baru
+  const handleOpenGmail = () => {
+    // 1. Validasi penerima utama (To)
+    const to = recipientEmail.trim();
+    if (!to || !isValidEmail(to)) {
+      showToast('error', 'Email Penerima Wajib Valid', 'Harap isi alamat email penerima utama yang valid (contoh: user@telkom.co.id).');
       return;
     }
 
-    // 2. Validasi setiap item dalam daftar Multi-Cc
-    const { valid: validCc, invalid: invalidCc } = validateEmailList(ccList);
+    // 2. Validasi Cc jika ada
+    const { invalid: invalidCc } = validateEmailList(ccList);
     if (invalidCc.length > 0) {
       showToast('error', 'Daftar Cc Tidak Valid', `Alamat email Cc berikut tidak valid: ${invalidCc.join(', ')}`);
       return;
     }
 
-    setIsSending(true);
-    setSendingStatusText('Mengonversi dokumen PDF ke format Base64...');
+    const cc = ccList.join(',');
+    const notes = userNotes;
 
-    try {
-      // 3. Konversi seluruh dokumen lampiran ke format Base64 lengkap
-      const preparedAttachments = await prepareAttachmentsForResend(selectedAttachments);
+    // 3. Formula pembukaan Gmail Web di tab baru
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&cc=${encodeURIComponent(cc)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(notes)}`;
+    window.open(gmailUrl, '_blank');
 
-      setSendingStatusText('Mengirim email via Resend API ke server...');
+    // 4. Tampilkan notifikasi sukses
+    showToast('success', 'Draf berhasil dibuka di Gmail Web', 'Tab Gmail Web telah dibuka dengan draf formulir pengajuan lengkap.');
 
-      // 4. Lakukan HTTP POST ke endpoint serverless /api/send-email
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          to: [cleanTo],
-          cc: validCc.length > 0 ? validCc : undefined,
-          subject: subject.trim(),
-          html: generatedHtml,
-          attachments: preparedAttachments
-        })
-      });
+    // 5. Perbarui status BAST menjadi "Submitted via Gmail"
+    const targetBast = defaultData.bastId 
+      ? bastList.find(b => b.id === defaultData.bastId)
+      : bastList.find(b => b.woNumber === defaultData.woNumber);
 
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || `Server merespon dengan status ${response.status}`);
+    if (targetBast) {
+      updateBAST(targetBast.id, { statusBast: 'Submitted via Gmail' });
+    } else {
+      const matchByWo = bastList.find(b => b.woNumber === defaultData.woNumber);
+      if (matchByWo) {
+        updateBAST(matchByWo.id, { statusBast: 'Submitted via Gmail' });
       }
-
-      // 5. Simpan ke riwayat LocalStorage
-      try {
-        const historyKey = 'belacom_sent_emails';
-        const existing = localStorage.getItem(historyKey);
-        const parsed = existing ? JSON.parse(existing) : [];
-        const newEntry = {
-          id: result.id || ('EMAIL-' + Math.random().toString(36).substring(2, 9)),
-          sentAt: new Date().toISOString(),
-          deliveryStatus: 'TERKIRIM',
-          resendMessageId: result.id,
-          simulated: result.simulated,
-          ...emailData,
-          ccEmails: validCc,
-          attachmentsCount: preparedAttachments.length
-        };
-        localStorage.setItem(historyKey, JSON.stringify([newEntry, ...parsed].slice(0, 50)));
-      } catch (err) {
-        console.warn('LocalStorage save error:', err);
-      }
-
-      // 6. Notifikasi sukses sesuai spesifikasi
-      showToast(
-        'success',
-        'Email Berhasil Dikirim!',
-        'Email dan lampiran berhasil dikirim ke penerima & Cc!'
-      );
-
-      onClose();
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error('[SendEmailModal] Gagal mengirim:', error);
-      showToast(
-        'error',
-        'Gagal Mengirim Email',
-        error.message || 'Terjadi gangguan saat menghubungkan ke server pengiriman email.'
-      );
-    } finally {
-      setIsSending(false);
-      setSendingStatusText('');
     }
+
+    // 6. Simpan riwayat pengiriman ke LocalStorage
+    try {
+      const historyKey = 'belacom_sent_emails';
+      const existing = localStorage.getItem(historyKey);
+      const parsed = existing ? JSON.parse(existing) : [];
+      const newEntry = {
+        id: 'GMAIL-' + Math.random().toString(36).substring(2, 9),
+        sentAt: new Date().toISOString(),
+        deliveryStatus: 'Submitted via Gmail',
+        to,
+        cc,
+        subject,
+        woNumber: defaultData.woNumber,
+        requestType: defaultData.requestType
+      };
+      localStorage.setItem(historyKey, JSON.stringify([newEntry, ...parsed].slice(0, 50)));
+    } catch (err) {
+      console.warn('LocalStorage save error:', err);
+    }
+
+    // 7. Tutup modal secara otomatis
+    onClose();
   };
 
   return (
@@ -266,7 +229,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         {/* Header Modal */}
         <div className="p-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 shrink-0">
+            <div className="p-2.5 bg-blue-600/15 text-blue-400 rounded-xl border border-blue-500/25 shrink-0 shadow-lg shadow-blue-950/40">
               <Mail className="w-5 h-5" />
             </div>
             <div>
@@ -276,6 +239,9 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   {defaultData.requestType}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-400" /> Gmail Web Direct
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-mono">
@@ -331,6 +297,19 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
           {activeTab === 'form' && (
             <div className="space-y-5 max-w-3xl mx-auto">
               
+              {/* Quick Info Banner */}
+              <div className="p-3 bg-blue-950/30 border border-blue-500/20 rounded-xl flex items-center justify-between gap-3 text-xs text-blue-300">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                  </div>
+                  <div>
+                    <span className="font-semibold block text-white">Alur Pengiriman Langsung ke Gmail Web</span>
+                    <span className="text-[11px] text-slate-400 font-mono">Draf email akan langsung terbuka di tab baru Gmail dengan penerima, Cc, subjek, dan catatan terisi lengkap.</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Penerima Utama & Nama */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -532,7 +511,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                         <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">Inbox</span>
                       </h4>
                       <p className="text-[10px] text-slate-500 font-mono">
-                        Simulasi tampilan persis yang akan diterima oleh klien di Gmail
+                        Tampilan layout email yang disiapkan untuk dikirim ke SAP Procurement
                       </p>
                     </div>
                   </div>
@@ -587,7 +566,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                   <div className="p-4 bg-white border-t border-slate-200">
                     <div className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5 font-mono">
                       <Download className="w-3.5 h-3.5 text-blue-600" />
-                      Uji Unduh Berkas Lampiran ({selectedAttachments.length} Dokumen):
+                      Unduh Berkas Lampiran ({selectedAttachments.length} Dokumen):
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {selectedAttachments.map((att) => (
@@ -619,17 +598,8 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         {/* Footer Actions */}
         <div className="p-4 bg-slate-850 border-t border-slate-800 flex items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-400 font-mono flex items-center gap-2">
-            {isSending ? (
-              <div className="flex items-center gap-2 text-cyan-400 font-semibold animate-pulse">
-                <RotateCw className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
-                <span>{sendingStatusText || 'Sedang memproses transmisi...'}</span>
-              </div>
-            ) : (
-              <>
-                <Building className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span className="hidden sm:inline">Citratel / Belacom Gov Jabo Submission System</span>
-              </>
-            )}
+            <Building className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="hidden sm:inline">Pengiriman resmi langsung via Google Mail Web (mail.google.com)</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -637,7 +607,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
               variant="secondary" 
               size="md" 
               onClick={onClose}
-              disabled={isSending}
             >
               Tutup
             </TouchButton>
@@ -645,17 +614,12 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
             <TouchButton
               variant="primary"
               size="md"
-              icon={isSending ? <RotateCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              onClick={handleSendEmail}
-              disabled={isSending}
-              showFingerIcon={!isSending}
-              className={`font-bold transition-all ${
-                isSending 
-                  ? 'bg-blue-800 text-slate-200 cursor-not-allowed opacity-80' 
-                  : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
-              }`}
+              icon={<ExternalLink className="w-4 h-4" />}
+              onClick={handleOpenGmail}
+              showFingerIcon
+              className="font-bold bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/30 transition-all hover:scale-102 active:scale-98"
             >
-              {isSending ? 'Mengirim...' : 'Kirim Email Resmi'}
+              Kirim via Gmail Web
             </TouchButton>
           </div>
         </div>

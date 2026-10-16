@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Info,
   SlidersHorizontal,
-  ArrowRight
+  ArrowRight,
+  Mail
 } from 'lucide-react';
 import { useProjectContext, DrilldownFilter } from '../context/ProjectContext';
 import { TouchButton } from './TouchButton';
@@ -181,6 +182,13 @@ export const DetailFilterModal: React.FC<DetailFilterModalProps> = ({ filter, on
 
   const getStatusBadge = (status: string) => {
     const s = status.toLowerCase();
+    if (s.includes('gmail') || s === 'submitted via gmail') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30 shadow-sm shadow-blue-950/30">
+          <Mail className="w-3.5 h-3.5 text-blue-400" /> {status}
+        </span>
+      );
+    }
     if (s === 'done' || s === 'lunas') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-950/30">

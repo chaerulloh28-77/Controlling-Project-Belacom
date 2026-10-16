@@ -14,7 +14,7 @@ export type StatusProject = 'Not Yet' | 'In Progress' | 'Done' | 'Cancel';
 
 export type StatusTeamProject = 'Not Yet' | 'Waiting Schedule' | 'On Schedule';
 
-export type StatusBAST = 'Not Yet' | 'Submit' | 'Done';
+export type StatusBAST = 'Not Yet' | 'Submit' | 'Done' | 'Submitted via Gmail';
 
 export type StatusRFS = 'Not Yet' | 'Submit' | 'Done';
 

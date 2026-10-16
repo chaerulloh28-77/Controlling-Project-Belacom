@@ -29,6 +29,7 @@ export const BASTPage: React.FC = () => {
 
   // Email Submission Modal State
   const [emailModalData, setEmailModalData] = useState<{
+    bastId?: string;
     requestType: 'BAST';
     woNumber: string;
     projectName: string;
@@ -174,6 +175,7 @@ export const BASTPage: React.FC = () => {
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
                   bast.statusBast === 'Done' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                  bast.statusBast === 'Submitted via Gmail' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' :
                   bast.statusBast === 'Submit' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
                   'bg-slate-800 text-slate-400 border border-slate-700'
                 }`}>
@@ -251,6 +253,7 @@ export const BASTPage: React.FC = () => {
                     }
 
                     setEmailModalData({
+                      bastId: bast.id,
                       requestType: 'BAST',
                       woNumber: bast.woNumber,
                       projectName: bast.workType,
@@ -437,6 +440,7 @@ export const BASTPage: React.FC = () => {
                 >
                   <option value="Not Yet">Not Yet</option>
                   <option value="Submit">Submit</option>
+                  <option value="Submitted via Gmail">Submitted via Gmail</option>
                   <option value="Done">Done</option>
                 </select>
               </div>
